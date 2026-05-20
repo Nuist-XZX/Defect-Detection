@@ -1,0 +1,13 @@
+# parent
+# ├── yolov5
+# └── datasets
+#     └── coco
+
+# Train/val/test sets as 1) dir: path/to/imgs, 2) file: path/to/imgs.txt, or 3) list: [path/to/imgs1, path/to/imgs2, ..]
+train: C:/Users/admin/Desktop/yolov5-6.0/datasets/470/images/train
+val: C:/Users/admin/Desktop/yolov5-6.0/datasets/470/images/val
+test: C:/Users/admin/Desktop/yolov5-6.0/datasets/470/images/test
+
+# Classes
+nc: 3  # number of classes
+names: ["text", "image", "table",]  # class names

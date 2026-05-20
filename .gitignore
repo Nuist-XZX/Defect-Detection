@@ -5,3 +5,5 @@ yolov5/runs/
 # 忽略.vscode/ .idea/
 .vscode/
 .idea/
+
+*.pt

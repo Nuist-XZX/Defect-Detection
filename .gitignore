@@ -1,3 +1,7 @@
 # 忽略 YOLOv5 下的 datasets 和 runs 文件夹
 yolov5/datasets/
 yolov5/runs/
+
+# 忽略.vscode/ .idea/
+.vscode/
+.idea/

@@ -52,11 +52,12 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         ):
 
     source = str(source)
-    save_img = not nosave and not source.endswith('.txt')  # 保存推理图片
+    save_img = not nosave and not source.endswith('.txt')  # 保存推理图片 True
     '''
-        source.lower().startswith()判断source是否是链接
-        source.endswith('.txt')判断source是否是txt文件路径
-        source.isnumeric()判断source是否是数字组成
+        source.lower().startswith()判断source是否是链接 网络视频流地址
+        source.endswith('.txt')判断source是否是txt文件路径 即存放视频流的地址
+        source.isnumeric()判断source是否是数字组成 即摄像头编号
+        判断source是否是 摄像头 / 视频流
     '''
     webcam = source.isnumeric() or source.endswith('.txt') or source.lower().startswith(('rtsp://', 'rtmp://', 'http://', 'https://'))
 
@@ -74,25 +75,30 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
     classify, suffix, suffixes = False, Path(w).suffix.lower(), ['.pt', '.onnx', '.tflite', '.pb', '']
     check_suffix(w, suffixes)  # 检查权重文件格式是否符合要求
     pt, onnx, tflite, pb, saved_model = (suffix == x for x in suffixes)  # 一次性判断权重文件是哪种格式，分别赋值给pt、onnx、tflite、pb、saved_model，是的赋值True，否则赋值False
-    stride, names = 64, [f'class{i}' for i in range(1000)]  # stride是步长，names是类别名称（这边设置的是默认类别名称）
+    stride, names = 64, [f'class{i}' for i in range(1000)]  # stride是步长，names是类别名称（这边设置的是默认值）
     if pt:
         # 判断权重路径中是否包含torchscript关键词，TorchScript是Pytorch的一种序列化模型格式。如果没有则使用普通的torch模型.pt格式
-        model = torch.jit.load(w) if 'torchscript' in w else attempt_load(weights, map_location=device)
-        stride = int(model.stride.max())  # model stride
-        names = model.module.names if hasattr(model, 'module') else model.names  # get class names
-        if half:
-            model.half()  # to FP16
-        if classify:  # second-stage classifier
+        model = torch.jit.load(w) if 'torchscript' in w else attempt_load(weights, map_location=device) # 模型加载
+        stride = int(model.stride.max())  # model stride 拿到模型最大下采样倍数stride[8,16,32],与anchor框倍数相同
+        names = model.module.names if hasattr(model, 'module') else model.names  # 拿到模型里的类别名称,即数据集标签中的类别名称
+        if half: # 是否开启半精度推理,将模型从Float32转为Float16
+            model.half()  # to FP16 速度更快,显存减半,gpu上推理开,cpu不支持
+        if classify:  # 二级分类器,检测后是否使用一个专门的分类模型resnet50二次确认物体类别,因为yolo检测出的分类精度不如分类网络,但是这边是不使用
+            # YOLO 检测出框 → 把框里的图抠出来 → ResNet50 再精分类
             modelc = load_classifier(name='resnet50', n=2)  # initialize
             modelc.load_state_dict(torch.load('resnet50.pt', map_location=device)['model']).to(device).eval()
     elif onnx:
         if dnn:
+            # 如果使用OpenCV DNN作为后端
             # check_requirements(('opencv-python>=4.5.4',))
-            net = cv2.dnn.readNetFromONNX(w)
+            net = cv2.dnn.readNetFromONNX(w) # 用 OpenCV 直接读取并运行 ONNX 模型
+            # 不用装额外的依赖,c++、python都能用,部署方便
         else:
+            # 如果不用DNN,而是用微软官方的 onnxruntime 运行 ONNX 模型
             check_requirements(('onnx', 'onnxruntime'))
             import onnxruntime
             session = onnxruntime.InferenceSession(w, None)
+            # 速度更快,支持gpu,兼容性强
     else:  # TensorFlow models
         check_requirements(('tensorflow>=2.4.1',))
         import tensorflow as tf
@@ -113,16 +119,18 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
             input_details = interpreter.get_input_details()  # inputs
             output_details = interpreter.get_output_details()  # outputs
             int8 = input_details[0]['dtype'] == np.uint8  # is TFLite quantized uint8 model
-    imgsz = check_img_size(imgsz, s=stride)  # check image size
+    imgsz = check_img_size(imgsz, s=stride)  # (如果是pt)检查并修改输入图片的尺寸为yolov5最大下采样倍数32的倍数,(如果是onnx)下采样倍数是默认值64
 
     # Dataloader
     if webcam:
+        # 如果推理数据是视频流/摄像头
         view_img = check_imshow()
         cudnn.benchmark = True  # set True to speed up constant image size inference
         dataset = LoadStreams(source, img_size=imgsz, stride=stride, auto=pt)
         bs = len(dataset)  # batch_size
     else:
-        dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt)
+        # 如果推理数据是图片/视频
+        dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt) # 加载图片/视频并预处理
         bs = 1  # batch_size
     vid_path, vid_writer = [None] * bs, [None] * bs
 

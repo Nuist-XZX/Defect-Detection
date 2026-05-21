@@ -21,10 +21,9 @@ from PIL import Image, ExifTags
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
-from utils.augmentations import Albumentations, augment_hsv, copy_paste, letterbox, mixup, random_perspective
-from utils.general import check_dataset, check_requirements, check_yaml, clean_str, segments2boxes, \
-    xywh2xyxy, xywhn2xyxy, xyxy2xywhn, xyn2xy
-from utils.torch_utils import torch_distributed_zero_first
+from yolov5.utils.augmentations import Albumentations, augment_hsv, copy_paste, letterbox, mixup, random_perspective
+from yolov5.utils.general import check_dataset, check_requirements, check_yaml, clean_str, segments2boxes, xywh2xyxy, xywhn2xyxy, xyxy2xywhn, xyn2xy
+from yolov5.utils.torch_utils import torch_distributed_zero_first
 
 # Parameters
 HELP_URL = 'https://github.com/ultralytics/yolov5/wiki/Train-Custom-Data'
@@ -149,58 +148,85 @@ class _RepeatSampler(object):
         while True:
             yield from iter(self.sampler)
 
-
+# 加载图片
 class LoadImages:
     # YOLOv5 image/video dataloader, i.e. `python detect.py --source image.jpg/vid.mp4`
+    """
+        LoadImages类，读取测试图片文件夹
+        输入参数：
+            path：图片文件/文件夹路径
+            img_size：图片尺寸，默认640
+            stride：模型下采样率，默认stride=32，[32 16 8]
+        返回参数：
+            path：图片路径
+            img：缩放并填充后的图片
+            img0： 原始图片
+            self.cap：视频对象
+            s：输出格式化字符串Loggers
+    """
     def __init__(self, path, img_size=640, stride=32, auto=True):
+        # p转为绝对路径,reslove去掉相对路径的. ..等符号
         p = str(Path(path).resolve())  # os-agnostic absolute path
         if '*' in p:
+            # 如果路径中有 * 通配符,glob.glob()会把所有匹配的文件名都返回,并用sorted按名称排序
             files = sorted(glob.glob(p, recursive=True))  # glob
         elif os.path.isdir(p):
+            # 如果p是个文件夹,glob.glob()会把文件夹下所有文件都返回,无论是图片还是视频,并用sorted按名称排序
             files = sorted(glob.glob(os.path.join(p, '*.*')))  # dir
         elif os.path.isfile(p):
+            # 如果p是个文件,直接写成列表格式
             files = [p]  # files
         else:
+            # 文件不存在
             raise Exception(f'ERROR: {p} does not exist')
 
+        # 把所有符合IMG_FORMATS和VID_FORMATS的图片和视频文件路径都保存到images和videos列表中
         images = [x for x in files if x.split('.')[-1].lower() in IMG_FORMATS]
         videos = [x for x in files if x.split('.')[-1].lower() in VID_FORMATS]
         ni, nv = len(images), len(videos)
 
         self.img_size = img_size
         self.stride = stride
-        self.files = images + videos
-        self.nf = ni + nv  # number of files
-        self.video_flag = [False] * ni + [True] * nv
-        self.mode = 'image'
-        self.auto = auto
+        self.files = images + videos # 视频和图片文件集中起来
+        self.nf = ni + nv  # 总文件数量
+        self.video_flag = [False] * ni + [True] * nv # 视频文件标志列表 False表示图片文件 True表示视频文件
+        self.mode = 'image' # 默认模式为图片模式
+        self.auto = auto # True
         if any(videos):
+            # 只要列表里有视频 → 返回 True
+            # 如果有视频，就先打开第一个视频，准备读取
             self.new_video(videos[0])  # new video
         else:
+            # 没视频则不打开
             self.cap = None
         assert self.nf > 0, f'No images or videos found in {p}. ' \
                             f'Supported formats are:\nimages: {IMG_FORMATS}\nvideos: {VID_FORMATS}'
 
     def __iter__(self):
-        self.count = 0
+        self.count = 0 # 从第0个文件开始读取
         return self
 
     def __next__(self):
         if self.count == self.nf:
+            # 判断是否所有文件都读完了,读完就停止
             raise StopIteration
         path = self.files[self.count]
 
         if self.video_flag[self.count]:
-            # Read video
+            # 如果是True,读视频
             self.mode = 'video'
-            ret_val, img0 = self.cap.read()
+            ret_val, img0 = self.cap.read() # 读一帧
             if not ret_val:
-                self.count += 1
+                # 如果没读到视频帧
+                self.count += 1 # 读完一个视频文件，跳到下一个文件
                 self.cap.release()
                 if self.count == self.nf:  # last video
+                    # 判断是不是最后一个文件
                     raise StopIteration
                 else:
+                    # 如果不是最后一个文件,打开下一个文件
                     path = self.files[self.count]
+                    # 再次打开new_video()读第二个视频
                     self.new_video(path)
                     ret_val, img0 = self.cap.read()
 
@@ -208,13 +234,13 @@ class LoadImages:
             print(f'video {self.count + 1}/{self.nf} ({self.frame}/{self.frames}) {path}: ', end='')
 
         else:
-            # Read image
+            # 读图片
             self.count += 1
             img0 = cv2.imread(path)  # BGR
             assert img0 is not None, 'Image Not Found ' + path
             print(f'image {self.count}/{self.nf} {path}: ', end='')
 
-        # Padded resize
+        # Padded resize 等比例缩放 + 填充
         img = letterbox(img0, self.img_size, stride=self.stride, auto=self.auto)[0]
 
         # Convert
@@ -224,9 +250,9 @@ class LoadImages:
         return path, img, img0, self.cap
 
     def new_video(self, path):
-        self.frame = 0
-        self.cap = cv2.VideoCapture(path)
-        self.frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        self.frame = 0 # 初始化当前帧为0
+        self.cap = cv2.VideoCapture(path) # opencv都视频
+        self.frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT)) # 视频一共多少帧
 
     def __len__(self):
         return self.nf  # number of files

@@ -267,9 +267,10 @@ def check_requirements(requirements=ROOT / 'requirements.txt', exclude=(), insta
 
 
 def check_img_size(imgsz, s=32, floor=0):
+    # 将输入图像尺寸调成32的倍数
     # Verify image size is a multiple of stride s in each dimension
     if isinstance(imgsz, int):  # integer i.e. img_size=640
-        new_size = max(make_divisible(imgsz, int(s)), floor)
+        new_size = max(make_divisible(imgsz, int(s)), floor) # make_divisible(imgsz, int(s)) = (imgsz / s) * s 将图像尺寸变成32的倍数,取最大值
     else:  # list i.e. img_size=[640, 480]
         new_size = [max(make_divisible(x, int(s)), floor) for x in imgsz]
     if new_size != imgsz:
@@ -424,7 +425,7 @@ def download(url, dir='.', unzip=True, delete=True, curl=False, threads=1):
 
 def make_divisible(x, divisor):
     # Returns x evenly divisible by divisor
-    return math.ceil(x / divisor) * divisor
+    return math.ceil(x / divisor) * divisor # 结果 = 向上取整 (x ÷ 除数) × 除数
 
 
 def clean_str(s):

@@ -39,10 +39,10 @@ def safe_download(file, url, url2=None, min_bytes=1E0, error_msg=''):
             print(f"ERROR: {assert_msg}\n{error_msg}")
         print('')
 
-
+# 下载权重文件
 def attempt_download(file, repo='ultralytics/yolov5'):  # from utils.downloads import *; attempt_download()
-    # Attempt file download if does not exist
-    file = Path(str(file).strip().replace("'", ''))
+    # Attempt file download if does not exist 如果不存在权重文件路径,则尝试下载
+    file = Path(str(file).strip().replace("'", '')) # 删除空格和单引号并转为路径
 
     if not file.exists():
         # URL specified

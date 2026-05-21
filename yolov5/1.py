@@ -130,6 +130,7 @@ path1 = r'C:\Users\admin\Desktop\470\labels'
 path = Path(path1)
 print(path)
 print(path.suffix)
+# 测试提交pycharm
 
 
 

@@ -84,9 +84,9 @@ def select_device(device='', batch_size=None):
 
 
 def time_sync():
-    # pytorch-accurate time
+    # pytorch-accurate time 时间同步,给pytorch gpu计时用
     if torch.cuda.is_available():
-        torch.cuda.synchronize()
+        torch.cuda.synchronize() # 等 GPU 把前面所有任务全部执行完再记录时间,时间更准确
     return time.time()
 
 

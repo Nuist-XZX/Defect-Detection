@@ -76,6 +76,7 @@ class Ensemble(nn.ModuleList):
     def __init__(self):
         super().__init__()
 
+    # 推理部分
     def forward(self, x, augment=False, profile=False, visualize=False):
         # x:输入图片 augment:数据增强 profile:性能分析 visualize:可视化
         y = []

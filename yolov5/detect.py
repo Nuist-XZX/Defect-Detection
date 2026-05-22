@@ -38,7 +38,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         nosave=False,  # do not save images/videos 是否不保存检测结果的的图像或视频
         classes=None,  # filter by class: --class 0, or --class 0 2 3
         agnostic_nms=False,  # class-agnostic NMS
-        augment=False,  # augmented inference
+        augment=False,  # augmented inference 推理时是否使用数据增强
         visualize=False,  # visualize features
         update=False,  # update all models
         project=ROOT / 'runs/detect',  # save results to project/name
@@ -68,7 +68,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
     # 初始化
     set_logging()
     device = select_device(device)
-    half &= device.type != 'cpu'  # half precision only supported on CUDA
+    half &= device.type != 'cpu'  # 半精度只允许在gpu上运行 CUDA
 
     # 加载模型
     w = str(weights[0] if isinstance(weights, list) else weights) # 权重文件路径，如果是列表，就取列表的第一个权重路径
@@ -78,6 +78,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
     stride, names = 64, [f'class{i}' for i in range(1000)]  # stride是步长，names是类别名称（这边设置的是默认值）
     if pt:
         # 判断权重路径中是否包含torchscript关键词，TorchScript是Pytorch的一种序列化模型格式。如果没有则使用普通的torch模型.pt格式
+        # model是由Ensemble实例的对象,其forward用于推理, return y, None  # inference, train output
         model = torch.jit.load(w) if 'torchscript' in w else attempt_load(weights, map_location=device) # 模型加载
         stride = int(model.stride.max())  # model stride 拿到模型最大下采样倍数stride[8,16,32],与anchor框倍数相同
         names = model.module.names if hasattr(model, 'module') else model.names  # 拿到模型里的类别名称,即数据集标签中的类别名称
@@ -131,37 +132,58 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         bs = len(dataset)  # batch_size  即多少路视频流/摄像头
     else:
         # 如果推理数据是图片/视频
-        # LoadImages return img_path, img, img0, None
+        # LoadImages path, img, img0, self.cap
         dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt) # 加载图片/视频并预处理
         bs = 1  # batch_size
-    vid_path, vid_writer = [None] * bs, [None] * bs
+    vid_path, vid_writer = [None] * bs, [None] * bs #  视频保存路径，视频写入器
 
     # 开始推理
     if pt and device.type != 'cpu':
-        model(torch.zeros(1, 3, *imgsz).to(device).type_as(next(model.parameters())))  # run once
+        # 如果在gpu运行并且是pt模型,torch.zeros(1, 3, *imgsz)是为了初始化模型,使其可以运行,因为pt模型需要输入尺寸才能初始化
+        # 这里的1是一张图片,3是通道数,imgsz是输入图片的尺寸
+        # type_as(next(model.parameters())) 让数据类型和模型权重完全一致（半精度 / 全精度）
+        model(torch.zeros(1, 3, *imgsz).to(device).type_as(next(model.parameters())))  # run once 只运行一次,目的是预热模型
+    """
+        dt 是 detect time 的缩写，意思是检测耗时
+        它是一个包含 3 个浮点数的列表，用来记录三段关键耗时：
+            dt[0]：图片预处理时间（缩放、填充、转张量等）
+            dt[1]：模型推理时间（神经网络前向计算）
+            dt[2]：后处理时间（NMS 非极大值抑制、画框、输出结果）
+        作用：统计并累加每一步的耗时，最后打印出速度信息，例如：
+            速度：预处理 0.5ms，推理 10.2ms，后处理 0.8ms
+        
+        seen：表示已经处理过的图片 / 视频帧总数, 没处理一帧就加 1
+    """
     dt, seen = [0.0, 0.0, 0.0], 0
     for path, img, im0s, vid_cap in dataset:
-        t1 = time_sync()
+        t1 = time_sync() # 计时开始
         if onnx:
+            # onnx 模型转Float32
             img = img.astype('float32')
         else:
+            # pt模型 → 转 torch 张量 → 送到 GPU → 转半精度 / 全精度
             img = torch.from_numpy(img).to(device)
             img = img.half() if half else img.float()  # uint8 to fp16/32
-        img = img / 255.0  # 0 - 255 to 0.0 - 1.0
+        img = img / 255.0  # 归一化,只有归一化才能正常推理 0 - 255 to 0.0 - 1.0
         if len(img.shape) == 3:
-            img = img[None]  # expand for batch dim
-        t2 = time_sync()
-        dt[0] += t2 - t1
+            # img[None]等价于img.unsqueeze(0),即在第 0 号位置（最前面）插入Batch维度。例如(3, 640, 640) → unsqueeze(0) → (1, 3, 640, 640)
+            img = img[None]  # 扩展Batch维度,使img变成[B,C,H,W]
+        t2 = time_sync() # 预处理计时结束
+        dt[0] += t2 - t1 # 记录预处理时间
 
         # Inference
         if pt:
+            # 是否开启特征图可视化,开启则创建保存文件夹,普通检测不用管,因为pt模型的特征图是可视化的
             visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
+            # 推理 augment=True 开启数据增强,visualize=True 开启特征图可视化
             pred = model(img, augment=augment, visualize=visualize)[0]
         elif onnx:
             if dnn:
-                net.setInput(img)
-                pred = torch.tensor(net.forward())
+                # 如果使用DNN,则使用Opencv读取onnx的模型
+                net.setInput(img) # 给模型设置输入
+                pred = torch.tensor(net.forward()) # 推理 → 转成张量
             else:
+                # 使用官方ONNX Runtime
                 pred = torch.tensor(session.run([session.get_outputs()[0].name], {session.get_inputs()[0].name: img}))
         else:  # tensorflow model (tflite, pb, saved_model)
             imn = img.permute(0, 2, 3, 1).cpu().numpy()  # image in numpy
@@ -184,9 +206,10 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
             pred[..., 2] *= imgsz[1]  # w
             pred[..., 3] *= imgsz[0]  # h
             pred = torch.tensor(pred)
-        t3 = time_sync()
-        dt[1] += t3 - t2
+        t3 = time_sync() # 推理计时结束
+        dt[1] += t3 - t2 # 记录推理时间
 
+        # 后处理部分
         # NMS
         pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
         dt[2] += time_sync() - t3

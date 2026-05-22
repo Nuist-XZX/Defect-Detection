@@ -36,8 +36,8 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         save_conf=False,  # save confidences in --save-txt labels
         save_crop=False,  # save cropped prediction boxes
         nosave=False,  # do not save images/videos 是否不保存检测结果的的图像或视频
-        classes=None,  # filter by class: --class 0, or --class 0 2 3
-        agnostic_nms=False,  # class-agnostic NMS
+        classes=None,  # filter by class: --class 0, or --class 0 2 3 按类别过滤,形如0或者0 2 3
+        agnostic_nms=False,  # class-agnostic NMS 进行nms是否也去除不同类别之间的框，默认False
         augment=False,  # augmented inference 推理时是否使用数据增强
         visualize=False,  # visualize features
         update=False,  # update all models
@@ -177,6 +177,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
             visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
             # 推理 augment=True 开启数据增强,visualize=True 开启特征图可视化
             pred = model(img, augment=augment, visualize=visualize)[0]
+            # pred.shape = [1, 25200, 85] 1张图片,25200是预测框的数量((80² + 40² + 20²) × 3 = 25200),85是类别数、坐标(x,y,w,h)、置信度等
         elif onnx:
             if dnn:
                 # 如果使用DNN,则使用Opencv读取onnx的模型
@@ -211,6 +212,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
 
         # 后处理部分
         # NMS
+        # 原pred pred.shape = [1, 25200, 85], 新pred
         pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
         dt[2] += time_sync() - t3
 

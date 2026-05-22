@@ -609,29 +609,30 @@ def clip_coords(boxes, shape):
         boxes[:, [0, 2]] = boxes[:, [0, 2]].clip(0, shape[1])  # x1, x2
         boxes[:, [1, 3]] = boxes[:, [1, 3]].clip(0, shape[0])  # y1, y2
 
-
+# NMS 后处理
 def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=None, agnostic=False, multi_label=False,
                         labels=(), max_det=300):
-    """Runs Non-Maximum Suppression (NMS) on inference results
-
+    """对推理结果进行非极大值抑制NMS处理
     Returns:
+         检测结果列表，每个图像对应一个 (n, 6) 形状的张量 [边界框坐标、置信度、类别]
          list of detections, on (n,6) tensor per image [xyxy, conf, cls]
     """
+    # prediction.shape = [1, 25200, 85] = [图片数, 预测框数, xywh+conf+class]
+    nc = prediction.shape[2] - 5  # 计算出类别数量
+    # ...表示前面所有维度我都要,0-3表示边界框坐标,4表示conf,5表示类别(0-你的类别数-1)
+    xc = prediction[..., 4] > conf_thres  # 取置信度大于conf_thres阈值的框
 
-    nc = prediction.shape[2] - 5  # number of classes
-    xc = prediction[..., 4] > conf_thres  # candidates
-
-    # Checks
+    # 检查置信度和iou阈值是否在0-1区间内
     assert 0 <= conf_thres <= 1, f'Invalid Confidence threshold {conf_thres}, valid values are between 0.0 and 1.0'
     assert 0 <= iou_thres <= 1, f'Invalid IoU {iou_thres}, valid values are between 0.0 and 1.0'
 
-    # Settings
-    min_wh, max_wh = 2, 4096  # (pixels) minimum and maximum box width and height
-    max_nms = 30000  # maximum number of boxes into torchvision.ops.nms()
-    time_limit = 10.0  # seconds to quit after
-    redundant = True  # require redundant detections
-    multi_label &= nc > 1  # multiple labels per box (adds 0.5ms/img)
-    merge = False  # use merge-NMS
+    # 设置参数
+    min_wh, max_wh = 2, 4096  # (像素) 最小和最大的框宽及框高
+    max_nms = 30000  # 最多送进NMS的框数量
+    time_limit = 10.0  # NMS处理时间最多10秒,防止死循环,卡死
+    redundant = True  # 冗余检测开关,默认开启,开启后让 NMS 结果更干净,减少重复框,  --   即去重
+    multi_label &= nc > 1  # 多类别标签开关,默认关闭,开启后每个预测框可以对应多个类别,多类别才开启
+    merge = False  # 是否使用 merge-NMS（一种更精准但更慢的 NMS）
 
     t = time.time()
     output = [torch.zeros((0, 6), device=prediction.device)] * prediction.shape[0]

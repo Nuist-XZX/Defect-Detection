@@ -28,8 +28,8 @@ import torch
 import torchvision
 import yaml
 
-from utils.downloads import gsutil_getsize
-from utils.metrics import box_iou, fitness
+from yolov5.utils.downloads import gsutil_getsize
+from yolov5.utils.metrics import box_iou, fitness
 
 # Settings
 torch.set_printoptions(linewidth=320, precision=5, profile='long')
@@ -143,14 +143,16 @@ def is_writeable(dir, test=False):
 
 
 def is_docker():
-    # Is environment a Docker container?
+    # 判断当前环境是否为Docker容器
+    # Path('/workspace').exists() 检查常见的工作目录(如代码平台/自定义容器)
+    # Path('/.dockerenv').exists() 检查Docker标准标记文件
     return Path('/workspace').exists()  # or Path('/.dockerenv').exists()
 
 
 def is_colab():
-    # Is environment a Google Colab instance?
+    # 判断当前环境是否为 Google Colab
     try:
-        import google.colab
+        import google.colab # 尝试导入 colab 专属模块进行判断
         return True
     except ImportError:
         return False
@@ -267,7 +269,7 @@ def check_requirements(requirements=ROOT / 'requirements.txt', exclude=(), insta
 
 
 def check_img_size(imgsz, s=32, floor=0):
-    # 将输入图像尺寸调成32的倍数
+    # 将定义的输入图片的尺寸(即640或自定义的其他尺寸)调成32的倍数
     # Verify image size is a multiple of stride s in each dimension
     if isinstance(imgsz, int):  # integer i.e. img_size=640
         new_size = max(make_divisible(imgsz, int(s)), floor) # make_divisible(imgsz, int(s)) = (imgsz / s) * s 将图像尺寸变成32的倍数,取最大值
@@ -279,7 +281,8 @@ def check_img_size(imgsz, s=32, floor=0):
 
 
 def check_imshow():
-    # Check if environment supports image displays
+    # 检查当前环境是否支持 OpenCV 的图像显示功能 cv2.imshow()
+    # 因为 Docker、Colab 这类无界面环境不能弹出窗口显示图片，所以必须提前检测，避免程序报错。
     try:
         assert not is_docker(), 'cv2.imshow() is disabled in Docker environments'
         assert not is_colab(), 'cv2.imshow() is disabled in Google Colab environments'
@@ -430,6 +433,7 @@ def make_divisible(x, divisor):
 
 def clean_str(s):
     # Cleans a string by replacing special characters with underscore _
+    # 把字符串里的特殊符号全部替换成下划线 _
     return re.sub(pattern="[|@#!¡·$€%&()=?¿^*;:,¨´><+]", repl="_", string=s)
 
 

@@ -119,22 +119,24 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
             input_details = interpreter.get_input_details()  # inputs
             output_details = interpreter.get_output_details()  # outputs
             int8 = input_details[0]['dtype'] == np.uint8  # is TFLite quantized uint8 model
-    imgsz = check_img_size(imgsz, s=stride)  # (如果是pt)检查并修改输入图片的尺寸为yolov5最大下采样倍数32的倍数,(如果是onnx)下采样倍数是默认值64
+    imgsz = check_img_size(imgsz, s=stride)  # (如果是pt)检查并修改定义的输入图片的尺寸(即640或自定义的其他尺寸)为yolov5最大下采样倍数32的倍数,(如果是onnx)下采样倍数是默认值64
 
-    # Dataloader
+    # 数据加载 推理前数据预处理
     if webcam:
         # 如果推理数据是视频流/摄像头
-        view_img = check_imshow()
-        cudnn.benchmark = True  # set True to speed up constant image size inference
+        view_img = check_imshow() # 检查当前环境是否支持OpenCV 的 imshow 显示
+        cudnn.benchmark = True  # 设置 True 来加快固定尺寸图片的推理速度  如果尺寸一直在变会影响推理速度,占用更多显存
+        # LoadStreams return self.sources, img, img0, None
         dataset = LoadStreams(source, img_size=imgsz, stride=stride, auto=pt)
-        bs = len(dataset)  # batch_size
+        bs = len(dataset)  # batch_size  即多少路视频流/摄像头
     else:
         # 如果推理数据是图片/视频
+        # LoadImages return img_path, img, img0, None
         dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt) # 加载图片/视频并预处理
         bs = 1  # batch_size
     vid_path, vid_writer = [None] * bs, [None] * bs
 
-    # Run inference
+    # 开始推理
     if pt and device.type != 'cpu':
         model(torch.zeros(1, 3, *imgsz).to(device).type_as(next(model.parameters())))  # run once
     dt, seen = [0.0, 0.0, 0.0], 0

@@ -85,7 +85,7 @@ def exif_transpose(image):
             image.info["exif"] = exif.tobytes()
     return image
 
-
+# 训练的数据加载器
 def create_dataloader(path, imgsz, batch_size, stride, single_cls=False, hyp=None, augment=False, cache=False, pad=0.0,
                       rect=False, rank=-1, workers=8, image_weights=False, quad=False, prefix=''):
     # Make sure only the first process in DDP process the dataset first, and the following others can use the cache
@@ -148,7 +148,7 @@ class _RepeatSampler(object):
         while True:
             yield from iter(self.sampler)
 
-# 加载图片
+# 加载和预处理图片
 class LoadImages:
     # YOLOv5 image/video dataloader, i.e. `python detect.py --source image.jpg/vid.mp4`
     """
@@ -243,9 +243,11 @@ class LoadImages:
         # Padded resize 等比例缩放 + 填充
         img = letterbox(img0, self.img_size, stride=self.stride, auto=self.auto)[0]
 
-        # Convert
+        # RGB转换和维度转换 推理预处理最后一步, 将图片转换为pytorch的格式
+        # img.transpose((2, 0, 1)) 将(H,W,C) 转为 (C,H,W)
+        # [::-1] BGR 转为 RGB Opencv读取默认屎BGR格式,但是训练用的屎RGB格式
         img = img.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
-        img = np.ascontiguousarray(img)
+        img = np.ascontiguousarray(img) # 让数组在内存里变成连续存储,即把数据整理成连续内存格式
 
         return path, img, img0, self.cap
 
@@ -299,7 +301,7 @@ class LoadWebcam:  # for inference
     def __len__(self):
         return 0
 
-
+# 视频流/摄像头加载和预处理
 class LoadStreams:
     # YOLOv5 streamloader, i.e. `python detect.py --source 'rtsp://example.com/media.mp4'  # RTSP, RTMP, HTTP streams`
     def __init__(self, sources='streams.txt', img_size=640, stride=32, auto=True):
@@ -308,84 +310,124 @@ class LoadStreams:
         self.stride = stride
 
         if os.path.isfile(sources):
+            # 判断路径是不是一个文本文件
             with open(sources, 'r') as f:
+                # 逐行读取文件内容,去掉空行和多余空格,存入列表
+                # x.strip() 删除每行两边的空白和换行 .splitlines() 按行分割 if len(x.strip()) 只保留非空白行
                 sources = [x.strip() for x in f.read().strip().splitlines() if len(x.strip())]
         else:
             sources = [sources]
 
-        n = len(sources)
+        n = len(sources) # 数量 摄像头列表/视频流文件数量
+        # 将所有摄像头/视频流路径都存入列表,为每个视频流/摄像头数据赋初始值None / 0
         self.imgs, self.fps, self.frames, self.threads = [None] * n, [0] * n, [0] * n, [None] * n
         self.sources = [clean_str(x) for x in sources]  # clean source names for later
         self.auto = auto
-        for i, s in enumerate(sources):  # index, source
-            # Start thread to read frames from video stream
+        for i, s in enumerate(sources):  # index, source路径
+            # 遍历每个路径
+            # 开始多线程从视频流数据/摄像头中读取数据
             print(f'{i + 1}/{n}: {s}... ', end='')
             if 'youtube.com/' in s or 'youtu.be/' in s:  # if source is YouTube video
+                # 判断是否是网络视频
                 check_requirements(('pafy', 'youtube_dl'))
                 import pafy
                 s = pafy.new(s).getbest(preftype="mp4").url  # YouTube URL
+            # 判断路径是不是摄像头还是视频流
+            # s.isnumeric() 如果是纯数字就是摄像头,eval()把数字字符串转为数字,例如eval("12")返回就是12
+            # 如果不是纯数字,是以rtsp:// rtmp:// http:// https://开头的就是视频流,直接返回s
             s = eval(s) if s.isnumeric() else s  # i.e. s = '0' local webcam
-            cap = cv2.VideoCapture(s)
-            assert cap.isOpened(), f'Failed to open {s}'
-            w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            cap = cv2.VideoCapture(s) # 打开第i个摄像头/视频流
+            assert cap.isOpened(), f'Failed to open {s}' # 判断是否打开成功
+            w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) # 读取视频流/摄像头的宽高
             h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            # cap.get(cv2.CAP_PROP_FPS) % 100 读取第i个摄像头/视频流帧率,%100限制帧率最高为99,防止异常值爆炸,如果是0则默认30帧
+            # 摄像头/RTSP会读不到帧率,返回0,所有用默认值30FPS代替
             self.fps[i] = max(cap.get(cv2.CAP_PROP_FPS) % 100, 0) or 30.0  # 30 FPS fallback
+            # 读取第i个视频流/摄像头的帧数,如果是0则默认无限帧数
             self.frames[i] = max(int(cap.get(cv2.CAP_PROP_FRAME_COUNT)), 0) or float('inf')  # infinite stream fallback
+            # 其实视频流/摄像头是读不到FPS和Frame的,因为都属于实时数据,因此都会使用默认值
 
-            _, self.imgs[i] = cap.read()  # guarantee first frame
+            _, self.imgs[i] = cap.read()  # 保证程序一开始就有图片,先读第i个视频流/摄像头的第一帧图像
+            # Thread 创建一个专门负责不断读取视频流的"后台读帧线程",避免主线程堵塞
+            # target=self.update 是线程要运行的函数,args=([i,cap,s]) 是线程要运行的函数的参数,daemon=True 线程是否随主线程一起退出
+            # 这里的i是视频流的索引号,cap是视频流的对象,s是视频流的路径
             self.threads[i] = Thread(target=self.update, args=([i, cap, s]), daemon=True)
             print(f" success ({self.frames[i]} frames {w}x{h} at {self.fps[i]:.2f} FPS)")
-            self.threads[i].start()
+            self.threads[i].start() # 启动线程 后台启动,开始无限循环读帧,线程启动就会调用update()函数
         print('')  # newline
 
         # check for common shapes
+        # 遍历每一路视频流的图片x并用letterbox做等比例缩放,拿到缩放后的图片shape (高度，宽度，3),之后把所有流的shape叠成一个数组,方便后面判断是否所有流的shape都相同
         s = np.stack([letterbox(x, self.img_size, stride=self.stride, auto=self.auto)[0].shape for x in self.imgs])
+        # np.unique(s, axis=0) 找出所有不重复的尺寸 加上.shape返回值为(行数,每一行有几个有效数字) 其中行数就是几个不同分辨率,如果都相同则为1
         self.rect = np.unique(s, axis=0).shape[0] == 1  # rect inference if all shapes equal
         if not self.rect:
+            # 警告：检测到不同分辨率的视频流，为了最佳性能，请使用相同尺寸的流！
             print('WARNING: Different stream shapes detected. For optimal performance supply similarly-shaped streams.')
 
     def update(self, i, cap, stream):
         # Read stream `i` frames in daemon thread
+        # f = self.frames[i] 第i个视频流/摄像头的帧数; read = 1表示每隔几帧取一次图片,取1表示每帧都取
         n, f, read = 0, self.frames[i], 1  # frame number, frame array, inference every 'read' frame
         while cap.isOpened() and n < f:
-            n += 1
+            # 从 n = 0 第0帧开始,一直读到 n = self.frames[i]最后一帧结束  视频流/摄像头是无限的,因此会一直循环
+            n += 1 # 开始第1帧,因为在初始化时,第0帧已经读过了
             # _, self.imgs[index] = cap.read()
-            cap.grab()
+            cap.grab() # 只抓最新画面，不解码（速度极快）,而cap.read() 会抓 + 解码并返回一帧画面,返回值success,image
             if n % read == 0:
-                success, im = cap.retrieve()
+                success, im = cap.retrieve() # 解码刚刚grab的帧放入im
                 if success:
-                    self.imgs[i] = im
+                    self.imgs[i] = im # 把最新画面存到self.imgs[i],主线程推理时使用这张图。只保留最新帧,第2帧来了会覆盖第1帧。
                 else:
                     print('WARNING: Video stream unresponsive, please check your IP camera connection.')
-                    self.imgs[i] *= 0
-                    cap.open(stream)  # re-open stream if signal was lost
-            time.sleep(1 / self.fps[i])  # wait time
+                    self.imgs[i] *= 0 # 没解码成功则清空图片,避免影响后续推理
+                    cap.open(stream)  # re-open stream if signal was lost # 重新打开摄像头/视频流
+            time.sleep(1 / self.fps[i])  # wait time # 控制读取速度 1/30 = 0.033秒,避免程序疯狂循环卡死
 
     def __iter__(self):
         self.count = -1
         return self
 
     def __next__(self):
-        self.count += 1
+        self.count += 1 # 帧计数+1,记录当前是第几帧
         if not all(x.is_alive() for x in self.threads) or cv2.waitKey(1) == ord('q'):  # q to quit
+            # 判断线程死了或者是按下q退出了
             cv2.destroyAllWindows()
-            raise StopIteration
+            raise StopIteration # 停止迭代
 
         # Letterbox
-        img0 = self.imgs.copy()
-        img = [letterbox(x, self.img_size, stride=self.stride, auto=self.rect and self.auto)[0] for x in img0]
+        img0 = self.imgs.copy() # 把所有视频流/摄像头的图片都复制到img0列表中
+        img = [letterbox(x, self.img_size, stride=self.stride, auto=self.rect and self.auto)[0] for x in img0] # 推理前预处理
 
         # Stack
-        img = np.stack(img, 0)
+        img = np.stack(img, 0) # 将所有视频流/摄像头最新帧叠成一个batchsize,维度为(batch_size,640,640,3) (B,H,W,C)
+        """
+            例如：
+            # img 是一个列表，里面装了 10 张图
+            img = [
+                图片1 (640, 640, 3),
+                图片2 (640, 640, 3),
+                ...
+                图片10 (640, 640, 3)
+            ]
+            stack后：形状为：(10, 640, 640, 3) 10：一次处理10张图片(batch数量) 640：图片的宽和高 3：RGB三通道
+            [
+              [图片1],
+              [图片2],
+              [图片3],
+              ...
+              [图片10]
+            ]
+        """
 
-        # Convert
+        # 转换 (B,H,W,C) -> (B,C,H,W) BGR -> RGB
         img = img[..., ::-1].transpose((0, 3, 1, 2))  # BGR to RGB, BHWC to BCHW
-        img = np.ascontiguousarray(img)
+        img = np.ascontiguousarray(img) # 转为连续内存格式
 
         return self.sources, img, img0, None
 
     def __len__(self):
-        return len(self.sources)  # 1E12 frames = 32 streams at 30 FPS for 30 years
+        return len(self.sources)  # 有多少路视频流/摄像头,即len(self.sources),作为后续的batchsize
 
 
 def img2label_paths(img_paths):
@@ -393,7 +435,7 @@ def img2label_paths(img_paths):
     sa, sb = os.sep + 'images' + os.sep, os.sep + 'labels' + os.sep  # /images/, /labels/ substrings
     return [sb.join(x.rsplit(sa, 1)).rsplit('.', 1)[0] + '.txt' for x in img_paths]
 
-
+# 加载图片和标签 - train.py val.py 训练 验证用
 class LoadImagesAndLabels(Dataset):
     # YOLOv5 train_loader/val_loader, loads images and labels for training and validation
     cache_version = 0.5  # dataset labels *.cache version

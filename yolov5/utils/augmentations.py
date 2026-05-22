@@ -10,8 +10,8 @@ import random
 import cv2
 import numpy as np
 
-from utils.general import colorstr, segment2box, resample_segments, check_version
-from utils.metrics import bbox_ioa
+from yolov5.utils.general import colorstr, segment2box, resample_segments, check_version
+from yolov5.utils.metrics import bbox_ioa
 
 
 class Albumentations:
@@ -91,35 +91,58 @@ def replicate(im, labels):
 # 等比例缩放 + 填充
 def letterbox(im, new_shape=(640, 640), color=(114, 114, 114), auto=True, scaleFill=False, scaleup=True, stride=32):
     # Resize and pad image while meeting stride-multiple constraints
-    shape = im.shape[:2]  # current shape [height, width]
+    # 在满足步长倍数限制的同时调整并填充图像大小
+    shape = im.shape[:2]  # 当前图像的尺寸 shape [height, width] (高, 宽)
     if isinstance(new_shape, int):
         new_shape = (new_shape, new_shape)
 
     # Scale ratio (new / old)
-    r = min(new_shape[0] / shape[0], new_shape[1] / shape[1])
+    r = min(new_shape[0] / shape[0], new_shape[1] / shape[1]) # 宽高缩放的最小比例,选择宽高比例最小的才能保证缩放后目标尺寸在new_shape = 640*640范围内
     if not scaleup:  # only scale down, do not scale up (for better val mAP)
         r = min(r, 1.0)
 
-    # Compute padding
-    ratio = r, r  # width, height ratios
-    new_unpad = int(round(shape[1] * r)), int(round(shape[0] * r))
-    dw, dh = new_shape[1] - new_unpad[0], new_shape[0] - new_unpad[1]  # wh padding
+    # 计算填充量
+    ratio = r, r  # width, height ratios  用逗号分割会自动生成元组,一行可批量复制多个元素
+    new_unpad = int(round(shape[1] * r)), int(round(shape[0] * r)) # (宽, 高) 缩放公式,计算新尺寸 新宽高 = 旧宽高 * 缩放比例 round()四舍五入变成整数
+    dw, dh = new_shape[1] - new_unpad[0], new_shape[0] - new_unpad[1]  # 计算需要填充的宽高数值
+    # 优化填充量
     if auto:  # minimum rectangle
-        dw, dh = np.mod(dw, stride), np.mod(dh, stride)  # wh padding
+        # 第一种填充方式：最小矩形填充,保证图像边界处于矩形内
+        # np.mod(dw, stride) 求余数 dw % stride 得到宽高的填充值,例如原本dw = 40, stride = 32, 得到dw = 8, 那最终只需要填充8,而不是40,这样可以刚好将宽高填充到32的最小倍数
+        # 即不强行填充到 640 * 640, 而是刚好将宽高填充到32的倍数,例如640 * 632,这样做的目的时推理更快,不浪费算力
+        dw, dh = np.mod(dw, stride), np.mod(dh, stride)  # 重新设置填充值,使宽高刚好填充到32的倍数
     elif scaleFill:  # stretch
-        dw, dh = 0.0, 0.0
-        new_unpad = (new_shape[1], new_shape[0])
-        ratio = new_shape[1] / shape[1], new_shape[0] / shape[0]  # width, height ratios
+        # 1000*500 拉伸为640*640
+        # 第二种填充方式：拉伸填充,保证图像边界处于矩形外,但可能导致图像变形, 目标检测不使用,会导致检测效果下降
+        dw, dh = 0.0, 0.0 # 填充值设为0 即完全不填充,因为是拉伸
+        new_unpad = (new_shape[1], new_shape[0]) # 新尺寸为设置的缩放大小640*640
+        ratio = new_shape[1] / shape[1], new_shape[0] / shape[0]  # 分别计算得到宽和高的缩放比例,宽高比例不取最小值,宽高是各自的比例
 
-    dw /= 2  # divide padding into 2 sides
+    dw /= 2  # 把要填充的总宽度、总高度,平均分到左右两边、上下两边,让图片居中！
     dh /= 2
 
+    # shape = im.shape[:2]  # 得到 (高, 宽)
+    # shape[::-1]           # 反转 → (宽, 高)
     if shape[::-1] != new_unpad:  # resize
-        im = cv2.resize(im, new_unpad, interpolation=cv2.INTER_LINEAR)
-    top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
-    left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
+        # 如果图片宽 高 与 目标宽 高 不一致,则进行resize,然后再进行填充
+        im = cv2.resize(im, new_unpad, interpolation=cv2.INTER_LINEAR) # 缩放算法（双线性插值） 缩放后图片不会太模糊，速度也快
+    # 假设 dw dh / 2之后为65.5 如果使用round()四舍五入,则top bottom 都是66, 二者相加 = 132, 但我们只需要131(0-131 = 132个像素)
+    # 因此用top = 65.5-0.1 bottom = 65.5 + 0.1 top + bottom = 65 + 66 = 131
+    top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1)) # 高度填充的上下边界
+    left, right = int(round(dw - 0.1)), int(round(dw + 0.1)) # 宽度填充的左右边界
+    """
+        im = cv2.copyMakeBorder(
+            im,        # 输入：已经缩放好的图片
+            top,       # 上边填充多少像素
+            bottom,    # 下边填充多少像素
+            left,      # 左边填充多少像素
+            right,     # 右边填充多少像素
+            cv2.BORDER_CONSTANT,  # 填充模式：纯色填充
+            value=color # 填充颜色：灰色 (114,114,114)
+        )
+    """
     im = cv2.copyMakeBorder(im, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)  # add border
-    return im, ratio, (dw, dh)
+    return im, ratio, (dw, dh) # 处理后的图像 im, 缩放比例 ratio, 填充量 (dw, dh)
 
 
 def random_perspective(im, targets=(), segments=(), degrees=10, translate=.1, scale=.1, shear=10, perspective=0.0,

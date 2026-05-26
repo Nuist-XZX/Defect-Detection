@@ -329,11 +329,11 @@ def run(data=ROOT / 'data/coco128.yaml',  # 'dataset.yaml path'
 
 def parse_opt():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data', type=str, default=ROOT / 'data/coco128.yaml', help='dataset.yaml path')
-    parser.add_argument('--weights', type=str, default=ROOT / 'yolov5s.pt', help='weights path')
+    parser.add_argument('--data', type=str, default=ROOT / 'data/470.yaml', help='dataset.yaml path')
+    parser.add_argument('--weights', type=str, default=ROOT / 'runs/train/exp2/weights/best.pt', help='weights path')
     parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[640, 640], help='image (h, w)')
-    parser.add_argument('--batch-size', type=int, default=1, help='batch size')
-    parser.add_argument('--device', default='cpu', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
+    parser.add_argument('--batch-size', type=int, default=64, help='batch size')
+    parser.add_argument('--device', default='0', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--half', action='store_true', help='FP16 half-precision export')
     parser.add_argument('--inplace', action='store_true', help='set YOLOv5 Detect() inplace=True')
     parser.add_argument('--train', action='store_true', help='model.train() mode')
@@ -347,7 +347,7 @@ def parse_opt():
     parser.add_argument('--iou-thres', type=float, default=0.45, help='TF.js NMS: IoU threshold')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='TF.js NMS: confidence threshold')
     parser.add_argument('--include', nargs='+',
-                        default=['torchscript', 'onnx'],
+                        default=['onnx'],
                         help='available formats are (torchscript, onnx, coreml, saved_model, pb, tflite, tfjs)')
     opt = parser.parse_args()
     print_args(FILE.stem, opt)

@@ -28,8 +28,8 @@ import torch
 import torchvision
 import yaml
 
-from yolov5.utils.downloads import gsutil_getsize
-from yolov5.utils.metrics import box_iou, fitness
+from utils.downloads import gsutil_getsize
+from utils.metrics import box_iou, fitness
 
 # Settings
 torch.set_printoptions(linewidth=320, precision=5, profile='long')
@@ -620,7 +620,8 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
     # prediction.shape = [1, 25200, 85] = [图片数, 预测框数, xywh+conf+class]
     nc = prediction.shape[2] - 5  # 计算出类别数量
     # ...表示前面所有维度我都要,0-3表示边界框坐标,4表示conf,5表示类别(0-你的类别数-1)
-    xc = prediction[..., 4] > conf_thres  # 取置信度大于conf_thres阈值的框
+    xc = prediction[..., 4] > conf_thres  # 取置信度大于conf_thres阈值的框,xc.shape = [图片数, 预测框数] = [1,25200]
+    print('xc.shape = ', xc.shape)  # [图片数, 预测框数] = [1,25200]
 
     # 检查置信度和iou阈值是否在0-1区间内
     assert 0 <= conf_thres <= 1, f'Invalid Confidence threshold {conf_thres}, valid values are between 0.0 and 1.0'
@@ -635,10 +636,11 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
     merge = False  # 是否使用 merge-NMS（一种更精准但更慢的 NMS）
 
     t = time.time()
-    output = [torch.zeros((0, 6), device=prediction.device)] * prediction.shape[0]
+    # torch.zeros((0, 6)) 创建全为0的张量, shape=(0, 6) 0行6列,当前没有行数据,每行有6个元素,分别是x1, y1, x2, y2, conf, cls
+    # prediction.shape[0] = batch = 图片数量
+    output = [torch.zeros((0, 6), device=prediction.device)] * prediction.shape[0] # 为每张图片准备一个空张量,用来存放NMS处理后的结果
     for xi, x in enumerate(prediction):  # image index, image inference
-        # Apply constraints
-        # x[((x[..., 2:4] < min_wh) | (x[..., 2:4] > max_wh)).any(1), 4] = 0  # width-height
+        # 因为batch = 1,即图片数为1,所以xc[xi] = xc[0],形状为[25200],一堆True和False,x[xc[xi]]表示遍历25200个框,只保留xc标记为True的框,False的框被删除
         x = x[xc[xi]]  # confidence
 
         # Cat apriori labels if autolabelling

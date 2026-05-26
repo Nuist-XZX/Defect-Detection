@@ -7,9 +7,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from yolov5.models.common import Conv
-from yolov5.utils.downloads import attempt_download
-from yolov5.models.yolo import Detect, Model
+from models.common import Conv
+from utils.downloads import attempt_download
 
 
 class CrossConv(nn.Module):
@@ -91,6 +90,7 @@ class Ensemble(nn.ModuleList):
 
 # 普通模型加载 .pt  这个函数用于加载模型权重文件并构建模型（可以构造普通模型或者集成模型）
 def attempt_load(weights, map_location=None, inplace=True, fuse=True):
+    from models.yolo import Detect, Model
     """
         这个函数用于加载模型权重文件并构建模型（可以构造普通模型或者集成模型）。
                 用在val.py、detect.py、train.py等文件中  一般用在测试、验证阶段

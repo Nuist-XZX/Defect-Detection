@@ -508,22 +508,25 @@ def coco80_to_coco91_class():  # converts 80-index (val2014) to 91-index (paper)
 
 def xyxy2xywh(x):
     # Convert nx4 boxes from [x1, y1, x2, y2] to [x, y, w, h] where xy1=top-left, xy2=bottom-right
+    # 将 nx4 个框从 [x1, y1, x2, y2] 的格式转换为 [x， y， w， h] 的格式，其中 xy1 为上左角坐标，xy2 为下右角坐标。
     y = x.clone() if isinstance(x, torch.Tensor) else np.copy(x)
-    y[:, 0] = (x[:, 0] + x[:, 2]) / 2  # x center
-    y[:, 1] = (x[:, 1] + x[:, 3]) / 2  # y center
-    y[:, 2] = x[:, 2] - x[:, 0]  # width
-    y[:, 3] = x[:, 3] - x[:, 1]  # height
+    y[:, 0] = (x[:, 0] + x[:, 2]) / 2  # x center   # x center = (x1 + x2) / 2
+    y[:, 1] = (x[:, 1] + x[:, 3]) / 2  # y center   # y center = (y1 + y2) / 2
+    y[:, 2] = x[:, 2] - x[:, 0]  # width            # width = x2 - x1
+    y[:, 3] = x[:, 3] - x[:, 1]  # height           # height = y2 - y1
     return y
 
 
 def xywh2xyxy(x):
     # Convert nx4 boxes from [x, y, w, h] to [x1, y1, x2, y2] where xy1=top-left, xy2=bottom-right
+    # 将 nx4 个框从 [x, y, w, h] 的格式转换为 [x1, y1, x2, y2] 的格式,其中 xy1 为上左角坐标,xy2 为下右角坐标。
     y = x.clone() if isinstance(x, torch.Tensor) else np.copy(x)
-    y[:, 0] = x[:, 0] - x[:, 2] / 2  # top left x
-    y[:, 1] = x[:, 1] - x[:, 3] / 2  # top left y
-    y[:, 2] = x[:, 0] + x[:, 2] / 2  # bottom right x
-    y[:, 3] = x[:, 1] + x[:, 3] / 2  # bottom right y
-    return y
+    # 形参x的值为[x,y,w,h]
+    y[:, 0] = x[:, 0] - x[:, 2] / 2  # top left x       x1 = x - w/2
+    y[:, 1] = x[:, 1] - x[:, 3] / 2  # top left y       y1 = y - h/2
+    y[:, 2] = x[:, 0] + x[:, 2] / 2  # bottom right x   x2 = x + w/2
+    y[:, 3] = x[:, 1] + x[:, 3] / 2  # bottom right y   y2 = y + h/2
+    return y # 返回值为[x1, y1, x2, y2] (x1,y1) = 左上角坐标 (x2,y2) = 右下角坐标
 
 
 def xywhn2xyxy(x, w=640, h=640, padw=0, padh=0):
@@ -610,8 +613,7 @@ def clip_coords(boxes, shape):
         boxes[:, [1, 3]] = boxes[:, [1, 3]].clip(0, shape[0])  # y1, y2
 
 # NMS 后处理
-def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=None, agnostic=False, multi_label=False,
-                        labels=(), max_det=300):
+def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=None, agnostic=False, multi_label=False, labels=(), max_det=300):
     """对推理结果进行非极大值抑制NMS处理
     Returns:
          检测结果列表，每个图像对应一个 (n, 6) 形状的张量 [边界框坐标、置信度、类别]
@@ -621,7 +623,8 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
     nc = prediction.shape[2] - 5  # 计算出类别数量
     # ...表示前面所有维度我都要,0-3表示边界框坐标,4表示conf,5表示类别(0-你的类别数-1)
     xc = prediction[..., 4] > conf_thres  # 取置信度大于conf_thres阈值的框,xc.shape = [图片数, 预测框数] = [1,25200]
-    print('xc.shape = ', xc.shape)  # [图片数, 预测框数] = [1,25200]
+    # print('xc.shape = ', xc.shape)  # [图片数, 预测框数] = [1,25200]
+    # print(xc) # [[False, False, True,  ..., False, True, False]]
 
     # 检查置信度和iou阈值是否在0-1区间内
     assert 0 <= conf_thres <= 1, f'Invalid Confidence threshold {conf_thres}, valid values are between 0.0 and 1.0'
@@ -638,12 +641,26 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
     t = time.time()
     # torch.zeros((0, 6)) 创建全为0的张量, shape=(0, 6) 0行6列,当前没有行数据,每行有6个元素,分别是x1, y1, x2, y2, conf, cls
     # prediction.shape[0] = batch = 图片数量
-    output = [torch.zeros((0, 6), device=prediction.device)] * prediction.shape[0] # 为每张图片准备一个空张量,用来存放NMS处理后的结果
-    for xi, x in enumerate(prediction):  # image index, image inference
-        # 因为batch = 1,即图片数为1,所以xc[xi] = xc[0],形状为[25200],一堆True和False,x[xc[xi]]表示遍历25200个框,只保留xc标记为True的框,False的框被删除
-        x = x[xc[xi]]  # confidence
+    output = [torch.zeros((0, 6), device=prediction.device)] * prediction.shape[0] # 为每张图片准备一个空张量,用来存放NMS处理后的结果,得到的是一个列表,每个元素都是一个空张量,形状为(0, 6),列表中每个索引代表一张图片
+    # print('prediction.shape = ',prediction.shape)
+    for xi, x in enumerate(prediction):  # 图片索引, 图片推理结果
+        """
+            # prediction.shape = [1, 18900, 85]
+            # xi = 0, 因为只输入了一张图片
+            # x = prediction[0] x.shape = [预测框数, 85] = [18900, 85]
+            
+            因为batch = 1,即图片数为1,所以xc[xi] = xc[0],形状为[预测框数] = [25200],一堆True和False,x[xc[xi]]表示遍历25200个框,只保留xc标记为True的框,False的框被删除
+            
+            xc = [True, False, True, False, ...]  # 25200个 - 实际预测框数量与图片大小有关
+            x  = [框1, 框2, 框3, 框4, ...]
+            x[xc] = 只拿 True 对应的框
+            → [框1, 框3, ...]
+        """
+        # print('xcxi.shape = ', xc[xi].shape) # xc[xi] = [True, False, True, False, True]
+        x = x[xc[xi]]  # confidence 过滤,取出置信度大于0.25的预测框
+        # print('x.shape = ', x.shape)  # [25200, 85] = [满足条件的预测框数, xywh+conf+class]
 
-        # Cat apriori labels if autolabelling
+        # 把真实标签（人工标注的框）强行插入到预测框里,方便计算 mAP 精度！只存在于val.py中使用
         if labels and len(labels[xi]):
             l = labels[xi]
             v = torch.zeros((len(l), nc + 5), device=x.device)
@@ -652,26 +669,34 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
             v[range(len(l)), l[:, 0].long() + 5] = 1.0  # cls
             x = torch.cat((x, v), 0)
 
-        # If none remain process next image
+        # 如果经过x = x[xc[xi]]过滤后没有预测框满足要求,则直接跳过该张图片 x.shape[0] = 框的数量
         if not x.shape[0]:
             continue
 
-        # Compute conf
-        x[:, 5:] *= x[:, 4:5]  # conf = obj_conf * cls_conf
+        # 计算置信度 模型输出的85个值表示的是0: x 中心 1: y 中心 2: w 宽度 3: h 高度 4: obj_conf   (框里有没有物体的置信度) 5~84: cls_conf (80个类别的概率)
+        # x [:, 5:] = 第 5 列到最后一列（80 个类别概率） x [:, 4:5] = 只有第 4 列（置信度）
+        x[:, 5:] *= x[:, 4:5]  # conf = obj_conf * cls_conf 框的置信度 = 有没有物体 × 类别概率
+        # print('x.shape = ', x.shape)  # [25200, 85] = [满足条件的预测框数, xywh+conf+class]
 
         # Box (center x, center y, width, height) to (x1, y1, x2, y2)
-        box = xywh2xyxy(x[:, :4])
+        # 把x y w h转换成框的左上角坐标和右下角坐标
+        box = xywh2xyxy(x[:, :4]) # x[:, :4] 指的是第0列到第3列的值,分别是x,y,w,h
+        # print('box.shape = ', box.shape) # [满足条件的预测框数, 4(x1, y1, x2, y2)]
 
         # Detections matrix nx6 (xyxy, conf, cls)
         if multi_label:
             i, j = (x[:, 5:] > conf_thres).nonzero(as_tuple=False).T
             x = torch.cat((box[i], x[i, j + 5, None], j[:, None].float()), 1)
         else:  # best class only
-            conf, j = x[:, 5:].max(1, keepdim=True)
+            conf, j = x[:, 5:].max(1, keepdim=True) # 对每一个预测框,从第5列到最后一列,即从每个类别的置信度中取出置信度最高的那一个,返回最高置信度conf和该类别的编号j
+            # torch.cat((box, conf, j.float()), 1) 先将刚刚转换好的坐标与最高置信度和类别合并成[x1, y1, x2, y2, conf, class]
+            # 然后[conf.view(-1) > conf_thres]再过滤一次,过滤掉置信度小于0.25的框
             x = torch.cat((box, conf, j.float()), 1)[conf.view(-1) > conf_thres]
+            # print('x.shape = ',x.shape) # [满足条件的预测框数, 6(x1, y1, x2, y2, conf, class)]
 
-        # Filter by class
+        # 是否按类别筛选
         if classes is not None:
+            # 判断第5列的类别是否是指定的类别, .any(1) 只要匹配任意一个指定类别就保留
             x = x[(x[:, 5:6] == torch.tensor(classes, device=x.device)).any(1)]
 
         # Apply finite constraint
@@ -679,17 +704,22 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
         #     x = x[torch.isfinite(x).all(1)]
 
         # Check shape
-        n = x.shape[0]  # number of boxes
+        n = x.shape[0]  # 预测框数量
         if not n:  # no boxes
-            continue
-        elif n > max_nms:  # excess boxes
+            continue # 如果没有符合条件的预测框,即预测框数量为0,则跳过该张图片
+        elif n > max_nms:  # 如果预测框超过预设的最大框数,安置消毒从高到底排列,只保留前30000个预测框
             x = x[x[:, 4].argsort(descending=True)[:max_nms]]  # sort by confidence
+        # print('x.shape = ', x.shape) # [满足条件的预测框数, 6(x1, y1, x2, y2, conf, class)]
 
         # Batched NMS
-        c = x[:, 5:6] * (0 if agnostic else max_wh)  # classes
-        boxes, scores = x[:, :4] + c, x[:, 4]  # boxes (offset by class), scores
+        c = x[:, 5:6] * (0 if agnostic else max_wh)  # 判断是否删除不同类别的框,如果不,则给不同类别的框加一个巨大偏移量, 让不同类别的框, 坐标完全不重叠,防止预测框重叠
+        boxes, scores = x[:, :4] + c, x[:, 4]  # boxes (加上偏移量的预测框坐标), scores 置信度
+        # 按置信度从高到低排序,拿分数最高的框;删掉所有和它重叠度高的框;再拿下一个最高分,重复删除;最后只留下不重复的、最准确的框！最终结果大概是49 个框 → NMS → 剩下 4～6 个最终框
         i = torchvision.ops.nms(boxes, scores, iou_thres)  # NMS
-        if i.shape[0] > max_det:  # limit detections
+        # print('i.shape = ', i.shape) # i.shape =  torch.Size([5])
+        # print('i 的结果: ',i) # i 的结果:  tensor([32, 35, 33, 26, 22], device='cuda:0')    i 的结果是预测框的索引
+        if i.shape[0] > max_det:  # 限制预测框数量
+            # 如果剩余预测框数量大于设定值,则只保留前max_det个预测框
             i = i[:max_det]
         if merge and (1 < n < 3E3):  # Merge NMS (boxes merged using weighted mean)
             # update boxes as boxes(i,4) = weights(i,n) * boxes(n,4)

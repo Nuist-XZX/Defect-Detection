@@ -152,7 +152,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         作用：统计并累加每一步的耗时，最后打印出速度信息，例如：
             速度：预处理 0.5ms，推理 10.2ms，后处理 0.8ms
         
-        seen：表示已经处理过的图片 / 视频帧总数, 没处理一帧就加 1
+        seen：表示已经处理过的图片 / 视频帧总数, 梅=每处理一帧就加 1
     """
     dt, seen = [0.0, 0.0, 0.0], 0
     for path, img, im0s, vid_cap in dataset:
@@ -212,16 +212,25 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
 
         # 后处理部分
         # NMS
-        # 原pred pred.shape = [1, 25200, 85], 新pred
+        # 原pred pred.shape = [1, 25200, 85], 新pred 是个列表
+        # pred = [
+        #     tensor([[x1,y1,x2,y2,conf,cls],  # 图1的框1
+        #             [x1,y1,x2,y2,conf,cls],  # 图1的框2
+        #             ... ]),
+        #
+        #     tensor([[x1,y1,x2,y2,conf,cls],  # 图2的框1
+        #             ... ])
+        # ]
         pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
-        dt[2] += time_sync() - t3
+        # print('pred:', pred)
+        dt[2] += time_sync() - t3 # 后处理时间
 
-        # Second-stage classifier (optional)
+        # Second-stage classifier (optional) 是否使用二级分类器,让分类更准确
         if classify:
             pred = apply_classifier(pred, modelc, img, im0s)
 
         # Process predictions
-        for i, det in enumerate(pred):  # per image
+        for i, det in enumerate(pred):  # i = 第几张图, det = 每张图的所有检测框
             seen += 1
             if webcam:  # batch_size >= 1
                 p, s, im0, frame = path[i], f'{i}: ', im0s[i].copy(), dataset.count
@@ -229,13 +238,14 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
                 p, s, im0, frame = path, '', im0s.copy(), getattr(dataset, 'frame', 0)
 
             p = Path(p)  # to Path
-            save_path = str(save_dir / p.name)  # img.jpg
+            save_path = str(save_dir / p.name)  # img.jpg 如:runs/detect/exp/bus.jpg
             txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # img.txt
-            s += '%gx%g ' % img.shape[2:]  # print string
-            gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
+            s += '%gx%g ' % img.shape[2:]  # print string 640*640
+            gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # 原图的宽度高度
             imc = im0.copy() if save_crop else im0  # for save_crop
             annotator = Annotator(im0, line_width=line_thickness, example=str(names))
             if len(det):
+                # 如果检测框数量大于0,开始画框
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.shape).round()
 
@@ -247,6 +257,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
                     if save_txt:  # Write to file
+                        # xyxy2xywh(torch.tensor(xyxy).view(1, 4))得到中心点坐标和长宽后,使用gn来归一化
                         xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
                         line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
                         with open(txt_path + '.txt', 'a') as f:
@@ -263,12 +274,13 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
             print(f'{s}Done. ({t3 - t2:.3f}s)')
 
             # Stream results
-            im0 = annotator.result()
+            im0 = annotator.result() # 把所有画好框、写好字的图片取出来
+            # 弹窗显示
             if view_img:
                 cv2.imshow(str(p), im0)
                 cv2.waitKey(1)  # 1 millisecond
 
-            # Save results (image with detections)
+            # 保存推理图片
             if save_img:
                 if dataset.mode == 'image':
                     cv2.imwrite(save_path, im0)

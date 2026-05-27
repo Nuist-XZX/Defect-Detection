@@ -124,14 +124,21 @@
 #     )
 
 
-from pathlib import Path
+# from pathlib import Path
+#
+# path1 = r'C:\Users\admin\Desktop\470\labels'
+# path = Path(path1)
+# print(path)
+# print(path.suffix)
+# # 测试提交pycharm
 
-path1 = r'C:\Users\admin\Desktop\470\labels'
-path = Path(path1)
-print(path)
-print(path.suffix)
-# 测试提交pycharm
 
+import onnxruntime as ort
+sess = ort.InferenceSession(r"C:\Users\admin\Desktop\Defect-Detection\yolov5\runs\train\exp2\weights\best.onnx")
+for inp in sess.get_inputs():
+    print(f"Input: {inp.name}, shape: {inp.shape}")
+for out in sess.get_outputs():
+    print(f"Output: {out.name}, shape: {out.shape}")
 
 
 

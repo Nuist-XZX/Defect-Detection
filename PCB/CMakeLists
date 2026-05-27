@@ -1,0 +1,28 @@
+cmake_minimum_required(VERSION 3.10)
+project(DefectDetection)
+
+# C++ 标准
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# 头文件路径（所有模块都能找到头文件）
+include_directories(
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/include/camera
+)
+
+# 查找 OpenCV（必须安装）
+find_package(OpenCV REQUIRED)
+include_directories(${OpenCV_INCLUDE_DIRS})
+
+# 收集所有源文件
+file(GLOB SRC_FILES
+    ${PROJECT_SOURCE_DIR}/src/*.cpp
+    ${PROJECT_SOURCE_DIR}/src/camera/*.cpp
+)
+
+# 生成可执行文件
+add_executable(${PROJECT_NAME} ${SRC_FILES})
+
+# 链接 OpenCV 库
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})

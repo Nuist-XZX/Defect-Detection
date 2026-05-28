@@ -133,15 +133,90 @@
 # # 测试提交pycharm
 
 
-import onnxruntime as ort
-sess = ort.InferenceSession(r"C:\Users\admin\Desktop\Defect-Detection\yolov5\runs\train\exp2\weights\best.onnx")
-for inp in sess.get_inputs():
-    print(f"Input: {inp.name}, shape: {inp.shape}")
-for out in sess.get_outputs():
-    print(f"Output: {out.name}, shape: {out.shape}")
+# import onnxruntime as ort
+# sess = ort.InferenceSession(r"C:\Users\admin\Desktop\Defect-Detection\yolov5\runs\train\exp2\weights\best.onnx")
+# for inp in sess.get_inputs():
+#     print(f"Input: {inp.name}, shape: {inp.shape}")
+# for out in sess.get_outputs():
+#     print(f"Output: {out.name}, shape: {out.shape}")
 
 
+# import onnx
+#
+# # 加载ONNX模型
+# model_path = r"C:\Users\admin\Desktop\Defect-Detection\yolov5\runs\train\exp2\weights\best.onnx"  # 替换为你的模型路径
+# model = onnx.load(model_path)
+#
+# # 打印模型输入信息
+# print("=== 模型输入信息 ===")
+# for input in model.graph.input:
+#     name = input.name
+#     shape = [dim.dim_value for dim in input.type.tensor_type.shape.dim]
+#     print(f"输入名称: {name}")
+#     print(f"输入形状: {shape}")
+#     print("-" * 50)
+#
+# # 打印模型输出信息（核心！）
+# print("\n=== 模型输出信息 ===")
+# for output in model.graph.output:
+#     name = output.name
+#     shape = [dim.dim_value for dim in output.type.tensor_type.shape.dim]
+#     print(f"输出名称: {name}")
+#     print(f"输出形状: {shape}")
+#     print(f"维度数: {len(shape)}")
+#     print("-" * 50)
+#
+# # 验证是否符合YOLOv5 6.0标准
+# print("\n=== 验证结果 ===")
+# output_shapes = [
+#     [dim.dim_value for dim in output.type.tensor_type.shape.dim]
+#     for output in model.graph.output
+# ]
+#
+# is_yolov5_60 = all(
+#     len(shape) == 4 and shape[0] == 1 and shape[2] in [80,40,20] and shape[3] in [80,40,20]
+#     for shape in output_shapes
+# )
+#
+# if is_yolov5_60:
+#     print("✅ 模型输出符合YOLOv5 6.0标准（4维张量）")
+#     print("⚠️  你的C++代码中假设的5维[1,3,H,W,8]是错误的！")
+# else:
+#     print("❌ 模型输出不符合标准，请检查导出参数")
 
 
+# import cv2
+#
+# model_path = r"C:\Users\admin\Desktop\Defect-Detection\yolov5\runs\train\exp2\weights\best.onnx"
+# net = cv2.dnn.readNetFromONNX(model_path)
+#
+# # 获取所有输出层名称
+# out_names = net.getUnconnectedOutLayersNames()
+# print("输出层名称:", out_names)
+#
+# # 获取每个输出层的形状
+# print("\n=== OpenCV读取的输出层形状 ===")
+# for name in out_names:
+#     layer_id = net.getLayerId(name)
+#     layer = net.getLayer(layer_id)
+#     # 获取输出形状（注意：OpenCV返回的是[channels, height, width]，batch维度在最前）
+#     out_shape = net.getUnconnectedOutLayers()[layer_id-1].shape
+#     print(f"输出层: {name}")
+#     print(f"形状: {out_shape}")
+#     print(f"维度数: {len(out_shape)}")
+#     print("-" * 50)
+
+# import onnx
+# model = onnx.load(r"C:\Users\admin\Desktop\Defect-Detection\yolov5\runs\train\exp2\weights\yolov5s.onnx")
+# for inp in model.graph.input:
+#     print("Input:", inp.name, [d.dim_value for d in inp.type.tensor_type.shape.dim])
+# for out in model.graph.output:
+#     print("Output:", out.name, [d.dim_value for d in out.type.tensor_type.shape.dim])
 
 
+import cv2
+import sys
+
+model_path = r"C:\Users\admin\Desktop\Defect-Detection\yolov5\runs\train\exp2\weights\yolov5s.onnx"
+net = cv2.dnn.readNetFromONNX(model_path)
+print("OpenCV loaded ONNX successfully")

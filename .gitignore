@@ -9,4 +9,6 @@ yolov5/runs/
 *.pt
 *.onnx
 
+# 根目录及所有子目录的exe
 *.exe
+**/*.exe

@@ -7,3 +7,6 @@ yolov5/runs/
 .idea/
 
 *.pt
+*.onnx
+
+*.exe

@@ -1,9 +1,8 @@
 ﻿#include"yolov5.h"
 
-YOLODetector::YOLODetector(const std::string& modelPath,
-    const bool& isGPU = true,
-    const cv::Size& inputSize = cv::Size(640, 640))
-{   //环境初始化
+YOLODetector::YOLODetector(const std::string& modelPath, const bool& isGPU = true, const cv::Size& inputSize = cv::Size(640, 640))
+{   
+	//环境初始化
     env = Ort::Env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING, "ONNX_DETECTION");
     sessionOptions = Ort::SessionOptions();
     sessionOptions.SetIntraOpNumThreads(4);//线程数
@@ -49,6 +48,7 @@ YOLODetector::YOLODetector(const std::string& modelPath,
 
     this->inputImageShape = cv::Size2f(inputSize);
 }
+
 //前处理
 void YOLODetector::preprocessing(cv::Mat& image, float*& blob, cv::Vec4d& params, std::vector<int64_t>& inputTensorShape)
 {
@@ -75,6 +75,7 @@ void YOLODetector::preprocessing(cv::Mat& image, float*& blob, cv::Vec4d& params
     }
     cv::split(floatImage, chw);
 }
+
 //后处理
 std::vector<Output> YOLODetector::postprocessing(const cv::Size& resizedImageShape,
     const cv::Size& originalImageShape,
@@ -184,7 +185,9 @@ std::vector<Output> YOLODetector::detect(cv::Mat& image, const float& confThresh
     delete[] blob;
 
     return result;
-}//并计算该向量（数组）中所有元素的乘积
+}
+
+//并计算该向量（数组）中所有元素的乘积
 size_t YOLODetector::vectorProduct(const std::vector<int64_t>& vector)
 {
     if (vector.empty())
@@ -196,6 +199,7 @@ size_t YOLODetector::vectorProduct(const std::vector<int64_t>& vector)
 
     return product;
 }
+
 //将一个以 char* 表示的 UTF-8 编码的字符串转换为 std::wstring宽字符
 std::wstring YOLODetector::charToWstring(const char* str)
 {
@@ -301,6 +305,7 @@ void YOLODetector::getBestClassInfo(std::vector<float>::iterator it, const int& 
     }
 
 }
+
 //读取classname文件
 std::vector<std::string> utils::loadNames(const std::string& path)
 {

@@ -19,14 +19,16 @@ using namespace std;
 
 // 在命名空间中重载,也可以在类中重载
 namespace MyFuncReload{
-	void func(){};
+	void func(){
+		cout << "void func()" << endl;
+	};
 	
 	void func(int x){
-		cout << x << endl;
+		cout << "void func(int x) - x = " << x << endl;
 	};
 	
 	void func(int x, int y){
-		cout << "x = " << x << " y = " << y <<endl;
+		cout << "void func(int x, int y) - x = " << x << " y = " << y <<endl;
 	};
 };
 

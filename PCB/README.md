@@ -78,36 +78,36 @@ python export.py --weights best.pt --include onnx --opset 12
 
 <h3>1. 漏孔</h3>
 <div style="display: flex; gap: 20px; margin-bottom: 30px;">
-  <div style="flex:1"><img src="PCB/data/01_missing_hole_01.jpg" style="width:100%"></div>
-  <div style="flex:1"><img src="PCB/data/01_missing_hole_01_detect.jpg" style="width:100%"></div>
+  <div style="flex:1"><img src="data/01_missing_hole_01.jpg" style="width:100%"></div>
+  <div style="flex:1"><img src="data/01_missing_hole_01_detect.jpg" style="width:100%"></div>
 </div>
 
 <h3>2. 鼠标咬伤</h3>
 <div style="display: flex; gap: 20px; margin-bottom: 30px;">
-  <div style="flex:1"><img src="PCB/data/01_mouse_bite_01.jpg" style="width:100%"></div>
-  <div style="flex:1"><img src="PCB/data/01_mouse_bite_01_detect.jpg" style="width:100%"></div>
+  <div style="flex:1"><img src="data/01_mouse_bite_01.jpg" style="width:100%"></div>
+  <div style="flex:1"><img src="data/01_mouse_bite_01_detect.jpg" style="width:100%"></div>
 </div>
 
 <h3>3. 开路</h3>
 <div style="display: flex; gap: 20px; margin-bottom: 30px;">
-  <div style="flex:1"><img src="PCB/data/01_open_circuit_01.jpg" style="width:100%"></div>
-  <div style="flex:1"><img src="PCB/data/01_open_circuit_01_detect.jpg" style="width:100%"></div>
+  <div style="flex:1"><img src="data/01_open_circuit_01.jpg" style="width:100%"></div>
+  <div style="flex:1"><img src="data/01_open_circuit_01_detect.jpg" style="width:100%"></div>
 </div>
 
 <h3>4. 短路</h3>
 <div style="display: flex; gap: 20px; margin-bottom: 30px;">
-  <div style="flex:1"><img src="PCB/data/01_short_01.jpg" style="width:100%"></div>
-  <div style="flex:1"><img src="PCB/data/01_short_01_detect.jpg" style="width:100%"></div>
+  <div style="flex:1"><img src="data/01_short_01.jpg" style="width:100%"></div>
+  <div style="flex:1"><img src="data/01_short_01_detect.jpg" style="width:100%"></div>
 </div>
 
 <h3>5. 杂铜</h3>
 <div style="display: flex; gap: 20px; margin-bottom: 30px;">
-  <div style="flex:1"><img src="PCB/data/01_spurious_copper_03.jpg" style="width:100%"></div>
-  <div style="flex:1"><img src="PCB/data/01_spurious_copper_03_detect.jpg" style="width:100%"></div>
+  <div style="flex:1"><img src="data/01_spurious_copper_03.jpg" style="width:100%"></div>
+  <div style="flex:1"><img src="data/01_spurious_copper_03_detect.jpg" style="width:100%"></div>
 </div>
 
 <h3>6. 毛刺/杂散</h3>
 <div style="display: flex; gap: 20px; margin-bottom: 30px;">
-  <div style="flex:1"><img src="PCB/data/04_spur_16.jpg" style="width:100%"></div>
-  <div style="flex:1"><img src="PCB/data/04_spur_16_detect.jpg" style="width:100%"></div>
+  <div style="flex:1"><img src="data/04_spur_16.jpg" style="width:100%"></div>
+  <div style="flex:1"><img src="data/04_spur_16_detect.jpg" style="width:100%"></div>
 </div>

@@ -76,38 +76,32 @@ python export.py --weights best.pt --include onnx --opset 12
 
 ## ⚖️ 对比
 
-<h3>1. 漏孔</h3>
-<div style="display: flex; gap: 20px; margin-bottom: 30px;">
-  <div style="flex:1"><img src="data/01_missing_hole_01.jpg" style="width:100%"></div>
-  <div style="flex:1"><img src="data/01_missing_hole_01_detect.jpg" style="width:100%"></div>
-</div>
+### 1. 漏孔
+| 原图 | 检测结果 |
+| :--- | :--- |
+| ![原图](data/01_missing_hole_01.jpg) | ![检测结果](data/01_missing_hole_01_detect.jpg) |
 
-<h3>2. 鼠标咬伤</h3>
-<div style="display: flex; gap: 20px; margin-bottom: 30px;">
-  <div style="flex:1"><img src="data/01_mouse_bite_01.jpg" style="width:100%"></div>
-  <div style="flex:1"><img src="data/01_mouse_bite_01_detect.jpg" style="width:100%"></div>
-</div>
+### 2. 鼠标咬伤
+| 原图 | 检测结果 |
+| :--- | :--- |
+| ![原图](data/01_mouse_bite_01.jpg) | ![检测结果](data/01_mouse_bite_01_detect.jpg) |
 
-<h3>3. 开路</h3>
-<div style="display: flex; gap: 20px; margin-bottom: 30px;">
-  <div style="flex:1"><img src="data/01_open_circuit_01.jpg" style="width:100%"></div>
-  <div style="flex:1"><img src="data/01_open_circuit_01_detect.jpg" style="width:100%"></div>
-</div>
+### 3. 开路
+| 原图 | 检测结果 |
+| :--- | :--- |
+| ![原图](data/01_open_circuit_01.jpg) | ![检测结果](data/01_open_circuit_01_detect.jpg) |
 
-<h3>4. 短路</h3>
-<div style="display: flex; gap: 20px; margin-bottom: 30px;">
-  <div style="flex:1"><img src="data/01_short_01.jpg" style="width:100%"></div>
-  <div style="flex:1"><img src="data/01_short_01_detect.jpg" style="width:100%"></div>
-</div>
+### 4. 短路
+| 原图 | 检测结果 |
+| :--- | :--- |
+| ![原图](data/01_short_01.jpg) | ![检测结果](data/01_short_01_detect.jpg) |
 
-<h3>5. 杂铜</h3>
-<div style="display: flex; gap: 20px; margin-bottom: 30px;">
-  <div style="flex:1"><img src="data/01_spurious_copper_03.jpg" style="width:100%"></div>
-  <div style="flex:1"><img src="data/01_spurious_copper_03_detect.jpg" style="width:100%"></div>
-</div>
+### 5. 杂铜
+| 原图 | 检测结果 |
+| :--- | :--- |
+| ![原图](data/01_spurious_copper_03.jpg) | ![检测结果](data/01_spurious_copper_03_detect.jpg) |
 
-<h3>6. 毛刺/杂散</h3>
-<div style="display: flex; gap: 20px; margin-bottom: 30px;">
-  <div style="flex:1"><img src="data/04_spur_16.jpg" style="width:100%"></div>
-  <div style="flex:1"><img src="data/04_spur_16_detect.jpg" style="width:100%"></div>
-</div>
+### 6. 毛刺/杂散
+| 原图 | 检测结果 |
+| :--- | :--- |
+| ![原图](data/04_spur_16.jpg) | ![检测结果](data/04_spur_16_detect.jpg) |

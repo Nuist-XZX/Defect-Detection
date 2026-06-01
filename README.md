@@ -1,16 +1,15 @@
 # Defect-Detection
-缺陷检测项目：基于 YOLOv5 与 OpenCV/ONNX Runtime 的 C/C++ 实现
+- 缺陷检测项目：基于 YOLOv5 与 OpenCV/ONNX Runtime 的 C/C++ 实现
+- 缺陷类型：short短路、missing_hole漏孔、spurious_copper杂铜、mouse_bite鼠标咬伤、open_circuit开路、spur毛刺/杂散
 
 ---
 
 ## 📂 项目结构说明
 
-本项目分为两大模块：C/C++ 基础学习模块，以及工业缺陷检测工程模块。
+本项目为工业缺陷检测工程模块。
 
 ```text
 Defect-Detection/
-├── C/                  # C语言基础学习与练习代码
-├── C++/                # C++语言基础学习与练习代码
 ├── PCB/                # 基于 Onnx Runtime 的模型部署实现
 ├── opencvdnn/          # 基于 OpenCV DNN 的模型部署实现
 ├── yolov5/             # YOLOv5 模型训练、导出与转换脚本
@@ -18,13 +17,7 @@ Defect-Detection/
 └── README.md           # 项目说明文档
 ```
 
-## 1. C/ 与 C++/ 目录
-
-- **目标**：系统学习和练习 C/C++ 编程语言  
-- **内容**：包含基础语法、数据结构、算法、指针与内存管理、面向对象等学习代码  
-- **目的**：为后续的部署开发打下坚实的语言基础  
-
-## 2. yolov5/ 目录
+## 1. yolov5/ 目录
 
 - **目标**：完成缺陷检测模型的训练与导出  
 - **核心工作流**：  
@@ -33,7 +26,7 @@ Defect-Detection/
   - **模型验证**：验证导出的 ONNX 模型在推理框架中的正确性  
 - **输出产物**：训练好的权重文件、ONNX 模型文件  
 
-## 3. PCB/ 目录 ✅（当前唯一可运行的部署实现）
+## 2. PCB/ 目录 ✅（当前唯一可运行的部署实现）
 
 - **目标**：基于 ONNX Runtime 实现 YOLOv5 模型的 C++ 部署  
 - **功能**：  
@@ -43,7 +36,7 @@ Defect-Detection/
   - 缺陷检测结果可视化（画框、保存结果）  
 - **说明**：这是目前项目中唯一成功实现并可运行的部署方案。  
 
-## 4. opencvdnn/ 目录 ⚠️（部署尚未成功实现）
+## 3. opencvdnn/ 目录 ⚠️（部署尚未成功实现）
 
 - **目标**：基于 OpenCV DNN 模块实现 YOLOv5 模型的 C++ 部署  
 - **当前状态**：  

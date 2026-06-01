@@ -1,0 +1,7 @@
+train: C:/Users/admin/Desktop/Defect-Detection/yolov5/datasets/PCB/images/train
+val: C:/Users/admin/Desktop/Defect-Detection/yolov5/datasets/PCB/images/val
+test: C:/Users/admin/Desktop/Defect-Detection/yolov5/datasets/PCB/images/test
+
+# Classes
+nc: 6  # number of classes
+names: ["short", "missing_hole", "spurious_copper", "mouse_bite", "open_circuit", "spur",]  # class names

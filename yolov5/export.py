@@ -1,25 +1,3 @@
-# YOLOv5 🚀 by Ultralytics, GPL-3.0 license
-"""
-Export a YOLOv5 PyTorch model to TorchScript, ONNX, CoreML, TensorFlow (saved_model, pb, TFLite, TF.js,) formats
-TensorFlow exports authored by https://github.com/zldrobit
-
-Usage:
-    $ python path/to/export.py --weights yolov5s.pt --include torchscript onnx coreml saved_model pb tflite tfjs
-
-Inference:
-    $ python path/to/detect.py --weights yolov5s.pt
-                                         yolov5s.onnx  (must export with --dynamic)
-                                         yolov5s_saved_model
-                                         yolov5s.pb
-                                         yolov5s.tflite
-
-TensorFlow.js:
-    $ cd .. && git clone https://github.com/zldrobit/tfjs-yolov5-example.git && cd tfjs-yolov5-example
-    $ npm install
-    $ ln -s ../../yolov5/yolov5s_web_model public/yolov5s_web_model
-    $ npm start
-"""
-
 import argparse
 import os
 import subprocess
@@ -329,8 +307,8 @@ def run(data=ROOT / 'data/coco128.yaml',  # 'dataset.yaml path'
 
 def parse_opt():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data', type=str, default=ROOT / 'data/470.yaml', help='dataset.yaml path')
-    parser.add_argument('--weights', type=str, default=ROOT / 'runs/train/exp2/weights/best.pt', help='weights path')
+    parser.add_argument('--data', type=str, default=ROOT / 'data/PCB.yaml', help='dataset.yaml path')
+    parser.add_argument('--weights', type=str, default=ROOT / 'runs/train/exp3/weights/best.pt', help='weights path')
     parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[640, 640], help='image (h, w)')
     parser.add_argument('--batch-size', type=int, default=1, help='batch size')
     parser.add_argument('--device', default='0', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')

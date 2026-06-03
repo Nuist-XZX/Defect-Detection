@@ -7,8 +7,8 @@ int main(int argc, char* argv[])
     cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_SILENT);
 
     const std::string classNamesPath = "C:/Users/admin/Desktop/Defect-Detection/PCB/data/class.names";
-    const std::string imagePath = "C:/Users/admin/Desktop/Defect-Detection/yolov5/data/images/ug470_7Series_Config_129.png";
-    const std::string modelPath = "C:/Users/admin/Desktop/Defect-Detection/yolov5/runs/train/exp2/weights/best.onnx";
+    const std::string imagePath = "C:/Users/admin/Desktop/Defect-Detection/PCB/data/01_missing_hole_01.jpg";
+    const std::string modelPath = "C:/Users/admin/Desktop/Defect-Detection/yolov5/runs/train/exp3/weights/best.onnx";
     const float confThreshold = 0.25f;
     const float iouThreshold = 0.45f;
     bool isGPU = false;
@@ -45,6 +45,7 @@ int main(int argc, char* argv[])
     detector.draw(image, result, classNames);
     cv::namedWindow("result", cv::WINDOW_NORMAL);
     cv::imshow("result", image);
+    cv::imwrite("C:/Users/admin/Desktop/Defect-Detection/PCB/data/01_missing_hole_01_detect.jpg", image);
     cv::waitKey(0);
     cv::destroyAllWindows();
     system("pause");

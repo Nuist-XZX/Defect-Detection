@@ -621,7 +621,7 @@ def scale_coords(img1_shape, coords, img0_shape, ratio_pad=None):
     # 返回映射到原始图片的检测框坐标
     return coords
 
-
+# 边界截断, 防止框坐标超出图片宽高，避免绘图、坐标计算异常
 def clip_coords(boxes, shape):
     # Clip bounding xyxy bounding boxes to image shape (height, width)
     if isinstance(boxes, torch.Tensor):  # faster individually

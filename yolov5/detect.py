@@ -210,7 +210,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         t3 = time_sync() # 推理计时结束
         dt[1] += t3 - t2 # 记录推理时间
 
-        # 后处理部分: 包括NMS(类别筛选、置信度筛选)、scale_coords还原缩放坐标、xyxy->xywh、画图
+        # 后处理部分: 包括NMS(类别筛选、置信度筛选)、scale_coords还原缩放坐标、xyxy->xywh、画图、检测框边界截断
         # NMS
         # 原pred pred.shape = [1, 25200, 85], 新pred 是个列表
         # pred = [
@@ -269,6 +269,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
                         label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
                         annotator.box_label(xyxy, label, color=colors(c, True))
                         if save_crop:
+                            # 保存检测框
                             save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
 
             # Print time (inference-only)

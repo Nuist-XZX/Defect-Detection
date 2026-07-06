@@ -210,7 +210,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         t3 = time_sync() # 推理计时结束
         dt[1] += t3 - t2 # 记录推理时间
 
-        # 后处理部分
+        # 后处理部分: 包括NMS(类别筛选、置信度筛选)、scale_coords还原缩放坐标、xyxy->xywh、画图
         # NMS
         # 原pred pred.shape = [1, 25200, 85], 新pred 是个列表
         # pred = [
@@ -247,6 +247,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
             if len(det):
                 # 如果检测框数量大于0,开始画框
                 # Rescale boxes from img_size to im0 size
+                # 将框从 img_size 缩放到 im0 大小
                 det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.shape).round()
 
                 # Print results

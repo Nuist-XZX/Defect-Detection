@@ -586,18 +586,39 @@ def resample_segments(segments, n=1000):
 
 
 def scale_coords(img1_shape, coords, img0_shape, ratio_pad=None):
+    """
+    将模型输入图(img1_shape)上的xyxy检测框坐标，还原映射到原始原图(img0_shape)坐标
+    对应letterbox预处理逆操作：去除填充偏移 + 按缩放比例还原尺寸
+    :param img1_shape: 模型输入图尺寸 (h, w)，如(640,640)
+    :param coords: 检测框坐标数组 N×4，格式 [x1,y1,x2,y2]，基于img1坐标系
+    :param img0_shape: 原始原图尺寸 (h, w)，未缩放填充
+    :param ratio_pad: 可选，预处理时计算好的(缩放系数gain,上下左右填充pad)，传参可重复利用避免重复计算
+    :return: 修正后、映射到原图的xyxy坐标数组
+    """
     # Rescale coords (xyxy) from img1_shape to img0_shape
-    if ratio_pad is None:  # calculate from img0_shape
-        gain = min(img1_shape[0] / img0_shape[0], img1_shape[1] / img0_shape[1])  # gain  = old / new
-        pad = (img1_shape[1] - img0_shape[1] * gain) / 2, (img1_shape[0] - img0_shape[0] * gain) / 2  # wh padding
-    else:
-        gain = ratio_pad[0][0]
-        pad = ratio_pad[1]
+    # 注释原意：将坐标从img1尺寸缩放至原图img0尺寸
 
-    coords[:, [0, 2]] -= pad[0]  # x padding
-    coords[:, [1, 3]] -= pad[1]  # y padding
+    if ratio_pad is None:  # calculate from img0_shape
+        # 外部未传入缩放、填充参数，则手动计算letterbox的gain和padding
+        # gain = 缩放比例 = 模型图边长 / 原图对应边长，取宽高缩放中更小值（等比例缩放）
+        gain = min(img1_shape[0] / img0_shape[0], img1_shape[1] / img0_shape[1])
+        # pad = (左右填充总像素, 上下填充总像素)
+        # 原图缩放后剩余空间均分在左右、上下两侧作为灰色填充条
+        pad = (img1_shape[1] - img0_shape[1] * gain) / 2, (img1_shape[0] - img0_shape[0] * gain)
+    else:
+        # 外部提前计算好ratio_pad，直接复用，不用重复计算gain、pad，提升速度
+        gain = ratio_pad[0][0]  # 取出等比例缩放系数
+        pad = ratio_pad[1]      # 取出x/y方向填充偏移量
+
+    # 去除x轴方向左右填充带来的偏移：x1、x2全部减去横向填充像素
+    coords[:, [0, 2]] -= pad[0]
+    # 去除y轴方向上下填充带来的偏移：y1、y2全部减去纵向填充像素
+    coords[:, [1, 3]] -= pad[1]
+    # 除以缩放比例gain，把小图坐标放大还原到原图像素尺度
     coords[:, :4] /= gain
+    # 边界裁剪：防止坐标超出原图宽高，避免出现负数或大于图片宽高的非法像素
     clip_coords(coords, img0_shape)
+    # 返回映射到原始图片的检测框坐标
     return coords
 
 
